@@ -3,16 +3,18 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAppTheme } from '@/context/theme-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import * as Crypto from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { Alert, Button, Image, Modal, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useState } from 'react';
+import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 export default function CrimeDetailScreen() {
     const { theme } = useAppTheme();
-    const { id } = useLocalSearchParams<{ id?: string }>();
+    const [id, setId] = useState(useLocalSearchParams<{ id?: string }>().id);
     const isNew = !id || id === 'new';
-    const router = useRouter();
+    // const router = useRouter();
 
     const [title, setTitle] = useState('');
     const [details, setDetails] = useState('');
@@ -20,9 +22,9 @@ export default function CrimeDetailScreen() {
     const [solved, setSolved] = useState(false);
     const [photoUri, setPhotoUri] = useState<string | undefined | null>(null);
     const [savedFlash, setSavedFlash] = useState(false);
-    const [showDateModal, setShowDateModal] = useState(false);
+    const [showDatePicker, setShowDatePicker] = useState(false);
 
-    const loadCrime = useCallback(async () => {
+    async function loadCrime() {
         if (!isNew && id) {
             const found = await getCrimeById(id);
             if (found) {
@@ -34,19 +36,17 @@ export default function CrimeDetailScreen() {
             }
         } else if (isNew) {
             // Reset fields for a fresh create (in case of navigating from an existing record)
-            setTitle('');
-            setDetails('');
-            setDate(new Date());
-            setSolved(false);
-            setPhotoUri(null);
+            // setTitle('');
+            // setDetails('');
+            // setDate(new Date());
+            // setSolved(false);
+            // setPhotoUri(null);
         }
-    }, [id, isNew]);
+    }
 
-    useFocusEffect(
-        useCallback(() => {
-            loadCrime();
-        }, [loadCrime])
-    );
+    useFocusEffect(() => {
+        loadCrime();
+    });
 
     function formatDate(d: Date) {
         return d.toISOString().slice(0, 10);
@@ -58,7 +58,7 @@ export default function CrimeDetailScreen() {
             return;
         }
         const record: CrimeRecord = {
-            id: isNew ? (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)) : id!,
+            id: isNew ? Crypto.randomUUID() : id!,
             title: title.trim(),
             details: details.trim(),
             date: formatDate(date),
@@ -69,11 +69,12 @@ export default function CrimeDetailScreen() {
         setSavedFlash(true);
         setTimeout(() => setSavedFlash(false), 1800);
         if (isNew) {
-            setTimeout(() => router.replace({ pathname: '/details', params: { id: record.id } }), 600);
+            setId(record.id);
+            // setTimeout(() => router.replace({ pathname: '/details', params: { id: record.id } }), 600);
         }
     }
 
-    const handlePickImage = useCallback(async () => {
+    async function handlePickImage() {
         const libPerm = await ImagePicker.getMediaLibraryPermissionsAsync();
         let status = libPerm.status;
         if (status !== 'granted') {
@@ -98,7 +99,7 @@ export default function CrimeDetailScreen() {
             console.warn('Image picking failed', e);
             Alert.alert('Error', 'Could not open image library.');
         }
-    }, []);
+    }
 
     // Header configured centrally in layout. If we want dynamic titles based on new vs existing, that can be lifted later.
 
@@ -118,27 +119,53 @@ export default function CrimeDetailScreen() {
                     <ThemedText type="subtitle" style={styles.label}>Title</ThemedText>
                     <TextInput
                         placeholder="Enter title"
+                        placeholderTextColor={theme.colors.icon}
                         value={title}
                         onChangeText={setTitle}
-                        style={styles.input}
+                        style={[styles.input, { color: theme.colors.text }]}
                     />
                     <ThemedText type="subtitle" style={styles.label}>Details</ThemedText>
                     <TextInput
                         placeholder="Enter details"
                         value={details}
                         onChangeText={setDetails}
-                        style={[styles.input, styles.multiline]}
+                        placeholderTextColor={theme.colors.icon}
+                        style={[styles.input, styles.multiline, { color: theme.colors.text }]}
                         multiline
                         numberOfLines={4}
                         textAlignVertical="top"
                     />
                     <ThemedText type="subtitle" style={styles.label}>Date</ThemedText>
-                    <Pressable onPress={() => setShowDateModal(true)} style={styles.dateButton}>
+                    <Pressable onPress={() => setShowDatePicker(true)} style={styles.dateButton}>
                         <ThemedText>{formatDate(date)}</ThemedText>
                     </Pressable>
                     <ThemedView style={styles.switchRow}>
                         <ThemedText type="subtitle">Solved</ThemedText>
-                        <Switch value={solved} onValueChange={setSolved} />
+                        <Pressable
+                            onPress={() => setSolved(prev => !prev)}
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: solved }}
+                            accessibilityLabel="Mark crime as solved"
+                            style={({ pressed }) => [{
+                                width: 28,
+                                height: 28,
+                                borderRadius: 6,
+                                borderWidth: 2,
+                                borderColor: solved ? theme.colors.tint : theme.colors.icon,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: solved ? theme.colors.tint : 'transparent',
+                                opacity: pressed ? 0.6 : 1,
+                            }]}
+                        >
+                            {solved && (
+                                <MaterialCommunityIcons
+                                    name="check-bold"
+                                    size={18}
+                                    color={theme.colors.background}
+                                />
+                            )}
+                        </Pressable>
                     </ThemedView>
                     <Pressable style={styles.saveButton} onPress={handleSave} accessibilityRole="button">
                         <ThemedText type="defaultSemiBold" style={styles.saveButtonText}>Save Crime</ThemedText>
@@ -150,46 +177,45 @@ export default function CrimeDetailScreen() {
                     )}
                 </ThemedView>
             </ScrollView>
-            <Modal visible={showDateModal} transparent animationType="fade" onRequestClose={() => setShowDateModal(false)}>
-                <View style={styles.modalBackdrop}>
-                    <View style={styles.modalCard}>
-                        <ThemedText type="subtitle" style={{ marginBottom: 12 }}>Select Date</ThemedText>
-                        <View style={styles.dateRow}>
-                            <TextInput
-                                style={styles.datePart}
-                                keyboardType="numeric"
-                                value={String(date.getFullYear())}
-                                onChangeText={(txt) => {
-                                    const y = parseInt(txt) || date.getFullYear();
-                                    setDate(new Date(y, date.getMonth(), date.getDate()));
-                                }}
-                            />
-                            <TextInput
-                                style={styles.datePart}
-                                keyboardType="numeric"
-                                value={String(date.getMonth() + 1)}
-                                onChangeText={(txt) => {
-                                    const m = (parseInt(txt) || date.getMonth() + 1) - 1;
-                                    setDate(new Date(date.getFullYear(), Math.min(Math.max(m, 0), 11), date.getDate()));
-                                }}
-                            />
-                            <TextInput
-                                style={styles.datePart}
-                                keyboardType="numeric"
-                                value={String(date.getDate())}
-                                onChangeText={(txt) => {
-                                    const d = parseInt(txt) || date.getDate();
-                                    setDate(new Date(date.getFullYear(), date.getMonth(), Math.min(Math.max(d, 1), 31)));
-                                }}
-                            />
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
-                            <Button title="Cancel" onPress={() => setShowDateModal(false)} />
-                            <Button title="Done" onPress={() => setShowDateModal(false)} />
-                        </View>
+            {showDatePicker && (
+                <Modal
+                    transparent
+                    animationType="slide"
+                    visible={showDatePicker}
+                    onRequestClose={() => setShowDatePicker(false)}
+                    style={{ marginVertical: 'auto', height: '100%', justifyContent: 'space-between' }}
+                >
+                    <View style={{ flex: 1, justifyContent: 'center', height: '100%', width: '100%', backgroundColor: theme.colors.background }} >
+                        <DateTimePicker
+                            mode="date"
+                            display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                            value={date}
+                            textColor={theme.colors.text}
+                            style={{ backgroundColor: theme.colors.background, alignSelf: 'center', justifyContent: 'center' }}
+                            themeVariant={theme.mode === 'dark' ? 'dark' : 'light'}
+                            accentColor={theme.colors.icon}
+                            onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
+                                if (event.type === 'dismissed') {
+                                    setShowDatePicker(false);
+                                    return;
+                                }
+                                if (selectedDate) {
+                                    setDate(selectedDate);
+                                }
+                                if (Platform.OS !== 'ios') {
+                                    setShowDatePicker(false);
+                                }
+                            }}
+                        />
+                        <Pressable
+                            onPress={() => setShowDatePicker(false)}
+                            style={{ alignSelf: 'center', backgroundColor: theme.colors.tint, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8, marginTop: 12 }}
+                        >
+                            <ThemedText>Select Date</ThemedText>
+                        </Pressable>
                     </View>
-                </View>
-            </Modal>
+                </Modal>
+            )}
         </>
     );
 }
@@ -238,8 +264,5 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
     photo: { width: 80, height: 80, borderRadius: 8, marginBottom: 4 },
-    modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 },
-    modalCard: { backgroundColor: '#fff', padding: 16, borderRadius: 12 },
-    dateRow: { flexDirection: 'row', gap: 8 },
-    datePart: { flex: 1, borderWidth: 1, borderColor: '#999', padding: 8, borderRadius: 6, textAlign: 'center' }
+    // Removed modal-related styles after switching to native DateTimePicker
 });

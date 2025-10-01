@@ -1,5 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DarkTheme as NavDarkTheme, DefaultTheme as NavDefaultTheme, ThemeProvider as NavigationThemeProvider, Theme } from '@react-navigation/native';
-import React, { createContext, ReactNode, useContext, useMemo, useState } from 'react';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 export type AppTheme = {
     key: string;
@@ -104,8 +105,47 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
+const STORAGE_KEY = 'app.themeKey.v1';
+
 export const ThemeProviderCustom = ({ children }: { children: ReactNode }) => {
     const [themeKey, setThemeKey] = useState('classicLight');
+    const [hydrated, setHydrated] = useState(false);
+    const isSettingRef = useRef(false);
+
+    useEffect(() => {
+        let active = true;
+        (async () => {
+            try {
+                const stored = await AsyncStorage.getItem(STORAGE_KEY);
+                if (stored && THEMES.some(t => t.key === stored) && active) {
+                    setThemeKey(stored);
+                }
+            } catch (e) {
+                // ignore read errors; fall back to default
+                console.warn('Theme load failed', e);
+            } finally {
+                if (active) setHydrated(true);
+            }
+        })();
+        return () => { active = false; };
+    }, []);
+
+    const persistTheme = useCallback(async (key: string) => {
+        try {
+            isSettingRef.current = true;
+            await AsyncStorage.setItem(STORAGE_KEY, key);
+        } catch (e) {
+            console.warn('Theme save failed', e);
+        } finally {
+            isSettingRef.current = false;
+        }
+    }, []);
+
+    const setThemeKeyPersist = useCallback((key: string) => {
+        setThemeKey(key);
+        persistTheme(key);
+    }, [persistTheme]);
+
     const theme = useMemo(() => THEMES.find(t => t.key === themeKey) || THEMES[0], [themeKey]);
 
     // Build a navigation theme derived from custom theme to keep a single source of truth
@@ -126,11 +166,11 @@ export const ThemeProviderCustom = ({ children }: { children: ReactNode }) => {
         };
     }, [theme]);
 
-    const value = useMemo(() => ({ theme, setThemeKey, themes: THEMES }), [theme, setThemeKey]);
+    const value = useMemo(() => ({ theme, setThemeKey: setThemeKeyPersist, themes: THEMES }), [theme, setThemeKeyPersist]);
     return (
         <ThemeContext.Provider value={value}>
             <NavigationThemeProvider value={navigationTheme}>
-                {children}
+                {hydrated ? children : null}
             </NavigationThemeProvider>
         </ThemeContext.Provider>
     );

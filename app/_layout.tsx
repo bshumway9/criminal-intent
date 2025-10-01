@@ -1,8 +1,7 @@
+import { HeaderIconLink } from '@/components/header-icon-link';
 import { ThemeProviderCustom, useAppTheme } from '@/context/theme-context';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { Link, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable } from 'react-native';
 import 'react-native-reanimated';
 
 export default function RootLayout() {
@@ -29,27 +28,22 @@ function AppStack() {
             title: 'Crimes',
             headerRight: () => (
               <>
-                <Link
-                  href={{ pathname: '/details', params: { id: 'new' } }}
-                  asChild
-                >
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Add new crime"
-                    style={{ paddingHorizontal: 12, flexDirection: 'row' }}
-                  >
-                    <MaterialCommunityIcons name={'plus-circle'} size={28} color={theme.colors.tint} />
-                  </Pressable>
-                </Link>
-                <Link href="/settings" asChild>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Open settings"
-                    style={{ paddingHorizontal: 14 }}
-                  >
-                    <MaterialCommunityIcons name={'cog-outline'} size={24} color={theme.colors.icon} />
-                  </Pressable>
-                </Link>
+                <HeaderIconLink
+                  href={{ pathname: '/details' }}
+                  iconName="plus-circle"
+                  color={theme.colors.tint}
+                  size={28}
+                  accessibilityLabel="Add new crime"
+                  paddingHorizontal={20}
+                />
+                <HeaderIconLink
+                  href="/settings"
+                  iconName="cog-outline"
+                  color={theme.colors.icon}
+                  size={24}
+                  accessibilityLabel="Open settings"
+                  paddingHorizontal={14}
+                />
               </>
             ),
           }}
@@ -61,20 +55,19 @@ function AppStack() {
             title: 'Crime Detail',
             headerBackTitle: 'Back',
             headerRight: () => (
-              <Link href="/settings" asChild>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Open settings"
-                  style={{ paddingHorizontal: 14 }}
-                >
-                  <MaterialCommunityIcons name={'cog-outline'} size={24} color={theme.colors.icon} />
-                </Pressable>
-              </Link>
+              <HeaderIconLink
+                href="/settings"
+                iconName="cog-outline"
+                color={theme.colors.icon}
+                size={24}
+                accessibilityLabel="Open settings"
+                paddingHorizontal={14}
+              />
             ),
           }}
         />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
     </>
   );
 }

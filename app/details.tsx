@@ -1,14 +1,15 @@
 import { CrimeRecord, getCrimeById, upsertCrime } from '@/code/storage';
+import Button from '@/components/buttons/button';
+import Checkbox from '@/components/buttons/checkbox';
+import ImagePicker from '@/components/buttons/imagePicker';
+import DateTimePickerPopup from '@/components/popups/DateTimePickerPopup';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAppTheme } from '@/context/theme-context';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import * as Crypto from 'expo-crypto';
-import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 export default function CrimeDetailScreen() {
     const { theme } = useAppTheme();
@@ -34,13 +35,6 @@ export default function CrimeDetailScreen() {
                 setSolved(found.solved);
                 setPhotoUri(found.photoUri);
             }
-        } else if (isNew) {
-            // Reset fields for a fresh create (in case of navigating from an existing record)
-            // setTitle('');
-            // setDetails('');
-            // setDate(new Date());
-            // setSolved(false);
-            // setPhotoUri(null);
         }
     }
 
@@ -74,32 +68,7 @@ export default function CrimeDetailScreen() {
         }
     }
 
-    async function handlePickImage() {
-        const libPerm = await ImagePicker.getMediaLibraryPermissionsAsync();
-        let status = libPerm.status;
-        if (status !== 'granted') {
-            const req = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            status = req.status;
-        }
-        if (status !== 'granted') {
-            Alert.alert('Permission required', 'Media library permission is needed to select a photo.');
-            return;
-        }
-        try {
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.9,
-            });
-            if (!result.canceled && result.assets?.length) {
-                setPhotoUri(result.assets[0].uri);
-            }
-        } catch (e) {
-            console.warn('Image picking failed', e);
-            Alert.alert('Error', 'Could not open image library.');
-        }
-    }
+
 
     // Header configured centrally in layout. If we want dynamic titles based on new vs existing, that can be lifted later.
 
@@ -107,15 +76,7 @@ export default function CrimeDetailScreen() {
         <>
             <ScrollView contentContainerStyle={styles.scrollContent} style={styles.flex}>
                 <ThemedView style={styles.container}>
-                    <Pressable onPress={() => {
-                        handlePickImage()
-                    }} accessibilityLabel="Pick photo" style={{ alignSelf: 'flex-start' }}>
-                        {photoUri ? (
-                            <Image source={{ uri: photoUri }} style={styles.photo} />
-                        ) : (
-                            <MaterialCommunityIcons name={'camera'} size={32} color={theme.colors.icon} />
-                        )}
-                    </Pressable>
+                    <ImagePicker photoUri={photoUri || null} setPhotoUri={setPhotoUri} />
                     <ThemedText type="subtitle" style={styles.label}>Title</ThemedText>
                     <TextInput
                         placeholder="Enter title"
@@ -141,35 +102,9 @@ export default function CrimeDetailScreen() {
                     </Pressable>
                     <ThemedView style={styles.switchRow}>
                         <ThemedText type="subtitle">Solved</ThemedText>
-                        <Pressable
-                            onPress={() => setSolved(prev => !prev)}
-                            accessibilityRole="checkbox"
-                            accessibilityState={{ checked: solved }}
-                            accessibilityLabel="Mark crime as solved"
-                            style={({ pressed }) => [{
-                                width: 28,
-                                height: 28,
-                                borderRadius: 6,
-                                borderWidth: 2,
-                                borderColor: solved ? theme.colors.tint : theme.colors.icon,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: solved ? theme.colors.tint : 'transparent',
-                                opacity: pressed ? 0.6 : 1,
-                            }]}
-                        >
-                            {solved && (
-                                <MaterialCommunityIcons
-                                    name="check-bold"
-                                    size={18}
-                                    color={theme.colors.background}
-                                />
-                            )}
-                        </Pressable>
+                        <Checkbox solved={solved} setSolved={setSolved} />
                     </ThemedView>
-                    <Pressable style={styles.saveButton} onPress={handleSave} accessibilityRole="button">
-                        <ThemedText type="defaultSemiBold" style={styles.saveButtonText}>Save Crime</ThemedText>
-                    </Pressable>
+                    <Button title="Save Crime" onPress={handleSave} />
                     {savedFlash && (
                         <View style={styles.flash}>
                             <ThemedText type="defaultSemiBold">Saved!</ThemedText>
@@ -178,43 +113,12 @@ export default function CrimeDetailScreen() {
                 </ThemedView>
             </ScrollView>
             {showDatePicker && (
-                <Modal
-                    transparent
-                    animationType="slide"
-                    visible={showDatePicker}
-                    onRequestClose={() => setShowDatePicker(false)}
-                    style={{ marginVertical: 'auto', height: '100%', justifyContent: 'space-between' }}
-                >
-                    <View style={{ flex: 1, justifyContent: 'center', height: '100%', width: '100%', backgroundColor: theme.colors.background }} >
-                        <DateTimePicker
-                            mode="date"
-                            display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                            value={date}
-                            textColor={theme.colors.text}
-                            style={{ backgroundColor: theme.colors.background, alignSelf: 'center', justifyContent: 'center' }}
-                            themeVariant={theme.mode === 'dark' ? 'dark' : 'light'}
-                            accentColor={theme.colors.icon}
-                            onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
-                                if (event.type === 'dismissed') {
-                                    setShowDatePicker(false);
-                                    return;
-                                }
-                                if (selectedDate) {
-                                    setDate(selectedDate);
-                                }
-                                if (Platform.OS !== 'ios') {
-                                    setShowDatePicker(false);
-                                }
-                            }}
-                        />
-                        <Pressable
-                            onPress={() => setShowDatePicker(false)}
-                            style={{ alignSelf: 'center', backgroundColor: theme.colors.tint, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8, marginTop: 12 }}
-                        >
-                            <ThemedText>Select Date</ThemedText>
-                        </Pressable>
-                    </View>
-                </Modal>
+                <DateTimePickerPopup
+                    showDatePicker={showDatePicker}
+                    setShowDatePicker={setShowDatePicker}
+                    date={date}
+                    setDate={setDate}
+                />
             )}
         </>
     );
@@ -246,14 +150,6 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: 'center'
     },
-    saveButton: {
-        marginTop: 12,
-        backgroundColor: '#2563eb',
-        paddingVertical: 14,
-        borderRadius: 10,
-        alignItems: 'center'
-    },
-    saveButtonText: { color: 'white' },
     flash: {
         position: 'absolute',
         top: 16,
@@ -263,6 +159,4 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         borderRadius: 20,
     },
-    photo: { width: 80, height: 80, borderRadius: 8, marginBottom: 4 },
-    // Removed modal-related styles after switching to native DateTimePicker
 });

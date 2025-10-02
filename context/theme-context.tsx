@@ -13,6 +13,7 @@ export type AppTheme = {
         icon: string;
         tabIconDefault: string;
         tabIconSelected: string;
+        buttonText: string;
     };
 };
 
@@ -28,6 +29,7 @@ const THEMES: AppTheme[] = [
             icon: '#687076',
             tabIconDefault: '#687076',
             tabIconSelected: '#0a7ea4',
+            buttonText: '#11181C',
         },
     },
     {
@@ -41,6 +43,7 @@ const THEMES: AppTheme[] = [
             icon: '#7d5d4a',
             tabIconDefault: '#7d5d4a',
             tabIconSelected: '#c97b32',
+            buttonText: '#2d241f',
         },
     },
     {
@@ -54,6 +57,7 @@ const THEMES: AppTheme[] = [
             icon: '#54717d',
             tabIconDefault: '#54717d',
             tabIconSelected: '#1b6f9b',
+            buttonText: '#102027',
         },
     },
     {
@@ -67,6 +71,7 @@ const THEMES: AppTheme[] = [
             icon: '#9BA1A6',
             tabIconDefault: '#9BA1A6',
             tabIconSelected: '#ffffff',
+            buttonText: '#676e74',
         },
     },
     {
@@ -80,6 +85,7 @@ const THEMES: AppTheme[] = [
             icon: '#9f82c6',
             tabIconDefault: '#9f82c6',
             tabIconSelected: '#b383ff',
+            buttonText: '#f0eaff',
         },
     },
     {
@@ -93,6 +99,7 @@ const THEMES: AppTheme[] = [
             icon: '#5c707d',
             tabIconDefault: '#5c707d',
             tabIconSelected: '#4da3ff',
+            buttonText: '#dfe7ec',
         },
     },
 ];
